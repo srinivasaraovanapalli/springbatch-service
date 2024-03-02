@@ -3,8 +3,9 @@ package com.springbatch.net.config;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
-import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.data.RepositoryItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.LineMapper;
@@ -15,22 +16,29 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import com.springbatch.net.entity.Employee;
 import com.springbatch.net.repository.EmployeeRepository;
 
 @Configuration
-@EnableBatchProcessing
+//@EnableBatchProcessing
 public class CsvBatchConfig {
 
 	@Autowired
 	EmployeeRepository employeeRepository;
 	
-	@Autowired
-	StepBuilderFactory stepBuilderFactory;
+	//@Autowired
+	//StepBuilder stepBuilderFactory;
+	
+	//@Autowired
+	//JobBuilder jobBuilderFactory;
 	
 	@Autowired
-	JobBuilderFactory jobBuilderFactory;
+	JobRepository jobRepository;
+	
+	@Autowired
+	PlatformTransactionManager platformTransactionManager;
 	//Create Reader
 	@Bean
 	public FlatFileItemReader<Employee> employeeReader(){
@@ -77,15 +85,24 @@ public class CsvBatchConfig {
 	//Create Step
 	@Bean
 	public Step step() {
-		return (Step) stepBuilderFactory.get("step-1").<Employee, Employee>chunk(10)
+		/*return (Step) stepBuilderFactory.get("step-1").<Employee, Employee>chunk(10)
 				.reader(employeeReader())
 				.processor(employeeProcessor())
-				.writer(employeeWriter()).build();
+				.writer(employeeWriter()).build();*/
+		return new StepBuilder("step1", jobRepository).<Employee, Employee>chunk(10, platformTransactionManager)
+		      .reader(employeeReader())
+		      .processor(employeeProcessor())
+		      .writer(employeeWriter())
+		      .build();
 	}
 	
 	//Create Job
 	@Bean
 	public Job job() {
-		return jobBuilderFactory.get("employee-job").flow(step()).end().build();
+		//return jobBuilderFactory.get("employee-job").flow(step()).end().build();
+		return new JobBuilder("empJob", jobRepository)
+		        .start(step())
+		        .build();
+
 	}
 }
